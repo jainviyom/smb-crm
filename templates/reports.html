@@ -31,6 +31,21 @@
     </div>
   </div>
 
+  <div class="mt-4 rounded-xl border border-slate-200 bg-white p-5 max-w-4xl">
+    <div class="font-semibold mb-3">Revenue won — last 6 months</div>
+    <div class="flex gap-4">
+      {% for row in trend %}
+      <div class="flex flex-col items-center flex-1">
+        <div class="w-full h-28 flex items-end">
+          <div class="w-full rounded-t-md bg-blue-500" style="height: {{ row.pct }}%"></div>
+        </div>
+        <div class="mt-2 text-xs text-slate-400">{{ row.label }}</div>
+        <div class="text-xs font-semibold stat-value">${{ '{:,}'.format(row.total) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
   <div class="mt-4 grid grid-cols-2 gap-4 max-w-4xl">
     <div class="rounded-xl border border-slate-200 bg-white p-5">
       <div class="font-semibold mb-3">Lead source breakdown</div>

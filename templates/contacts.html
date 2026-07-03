@@ -21,13 +21,23 @@
 
   <div class="flex-1 px-10 py-8">
     {% if selected %}
-    <div class="flex items-center gap-4">
-      <div class="h-14 w-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg font-semibold">
-        {{ (selected.name.split()[0][0] ~ selected.name.split()[1][0]) }}
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="h-14 w-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg font-semibold">
+          {{ (selected.name.split()[0][0] ~ selected.name.split()[1][0]) }}
+        </div>
+        <div>
+          <div class="text-xl font-bold">{{ selected.name }}</div>
+          <div class="text-slate-400">{{ selected.title }} at {{ selected.account_name }}</div>
+        </div>
       </div>
-      <div>
-        <div class="text-xl font-bold">{{ selected.name }}</div>
-        <div class="text-slate-400">{{ selected.title }} at {{ selected.account_name }}</div>
+      <div class="flex items-center gap-2">
+        <button type="button" class="edit-trigger rounded-lg border border-slate-200 text-sm font-medium px-3 py-1.5 hover:bg-slate-50"
+                data-entity="contact" data-id="{{ selected.id }}" data-name="{{ selected.name }}" data-title="{{ selected.title }}"
+                data-account_id="{{ selected.account_id }}" data-email="{{ selected.email }}" data-phone="{{ selected.phone }}">Edit</button>
+        <form method="post" action="{{ url_for('delete_contact', contact_id=selected.id) }}" onsubmit="return confirm('Delete this contact?')">
+          <button class="rounded-lg border border-red-200 text-red-500 text-sm font-medium px-3 py-1.5 hover:bg-red-50">Delete</button>
+        </form>
       </div>
     </div>
 

@@ -9,7 +9,9 @@ DROP TABLE IF EXISTS reps;
 CREATE TABLE reps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    title TEXT NOT NULL
+    title TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password_hash TEXT
 );
 
 CREATE TABLE leads (

@@ -9,6 +9,17 @@ if (newMenuBtn) {
   document.addEventListener("click", () => newMenu.classList.add("hidden"));
 }
 
+// Notifications dropdown
+const notifBtn = document.getElementById("notif-btn");
+const notifPanel = document.getElementById("notif-panel");
+if (notifBtn) {
+  notifBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    notifPanel.classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => notifPanel.classList.add("hidden"));
+}
+
 // New-record modals
 const modalOverlay = document.getElementById("modal-overlay");
 function openModal(id) {
@@ -26,6 +37,27 @@ document.querySelectorAll("[data-open-modal]").forEach((btn) => {
     openModal(btn.dataset.openModal);
   });
 });
+// Edit-record triggers: populate the matching hidden edit form from data-*
+// attributes (data-account_id maps straight to a form field named account_id —
+// underscores pass through the dataset API unchanged, only hyphens camelCase).
+const ENTITY_PATHS = { lead: "leads", contact: "contacts", account: "accounts", opportunity: "opportunities" };
+document.querySelectorAll(".edit-trigger").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const entity = btn.dataset.entity;
+    const id = btn.dataset.id;
+    const form = document.getElementById(`form-edit-${entity}`);
+    if (!form) return;
+    form.action = `/${ENTITY_PATHS[entity]}/${id}/edit`;
+    Object.entries(btn.dataset).forEach(([key, val]) => {
+      if (key === "entity" || key === "id") return;
+      const field = form.querySelector(`[name="${key}"]`);
+      if (field) field.value = val;
+    });
+    openModal(`modal-edit-${entity}`);
+  });
+});
+
 document.querySelectorAll(".modal-close").forEach((btn) => btn.addEventListener("click", closeModal));
 if (modalOverlay) {
   modalOverlay.addEventListener("click", (e) => {

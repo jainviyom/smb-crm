@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8 max-w-4xl">
+  <h1 class="text-2xl font-bold">Search results</h1>
+  <p class="text-slate-400 mt-1">{{ total }} result{{ '' if total == 1 else 's' }} for "{{ q }}"</p>
+
+  {% if results.leads %}
+  <div class="mt-6">
+    <div class="text-xs font-semibold tracking-wide text-slate-400 mb-2">LEADS</div>
+    <div class="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+      {% for l in results.leads %}
+      <a href="{{ url_for('leads') }}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+        <div><span class="font-medium">{{ l.name }}</span> <span class="text-slate-400 text-sm">— {{ l.company }}</span></div>
+        <span class="text-xs text-slate-400">{{ l.status }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if results.contacts %}
+  <div class="mt-6">
+    <div class="text-xs font-semibold tracking-wide text-slate-400 mb-2">CONTACTS</div>
+    <div class="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+      {% for c in results.contacts %}
+      <a href="{{ url_for('contacts', id=c.id) }}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+        <div><span class="font-medium">{{ c.name }}</span> <span class="text-slate-400 text-sm">— {{ c.account_name }}</span></div>
+        <span class="text-xs text-slate-400">{{ c.email }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if results.accounts %}
+  <div class="mt-6">
+    <div class="text-xs font-semibold tracking-wide text-slate-400 mb-2">ACCOUNTS</div>
+    <div class="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+      {% for a in results.accounts %}
+      <a href="{{ url_for('accounts', id=a.id) }}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+        <div class="font-medium">{{ a.name }}</div>
+        <span class="text-xs text-slate-400">{{ a.industry }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if results.opportunities %}
+  <div class="mt-6">
+    <div class="text-xs font-semibold tracking-wide text-slate-400 mb-2">OPPORTUNITIES</div>
+    <div class="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100">
+      {% for o in results.opportunities %}
+      <a href="{{ url_for('opportunities') }}" class="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+        <div><span class="font-medium">{{ o.name }}</span> <span class="text-slate-400 text-sm">— {{ o.account_name }}</span></div>
+        <span class="font-semibold text-sm">${{ '{:,}'.format(o.amount) }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if q and total == 0 %}
+  <div class="mt-10 text-center text-slate-400">No results found for "{{ q }}".</div>
+  {% endif %}
+</div>
+{% endblock %}

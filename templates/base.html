@@ -42,24 +42,31 @@
         {% endfor %}
       </nav>
     </div>
-    <div class="flex items-center gap-3 px-6 py-5 border-t border-slate-100">
-      <div class="h-8 w-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 font-semibold text-xs">
-        {{ (rep['name'].split()[0][0] ~ rep['name'].split()[1][0]) if rep else 'MC' }}
+    <div class="px-6 py-5 border-t border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="h-8 w-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 font-semibold text-xs">
+          {{ (rep['name'].split()[0][0] ~ rep['name'].split()[1][0]) if rep else '--' }}
+        </div>
+        <div class="leading-tight flex-1 min-w-0">
+          <div class="text-sm font-semibold truncate">{{ rep['name'] if rep else 'Not signed in' }}</div>
+          <div class="text-xs text-slate-400">{{ rep['title'] if rep else '' }}</div>
+        </div>
       </div>
-      <div class="leading-tight">
-        <div class="text-sm font-semibold">{{ rep['name'] if rep else 'Maria Chen' }}</div>
-        <div class="text-xs text-slate-400">{{ rep['title'] if rep else 'Sales Rep' }}</div>
-      </div>
+      {% if rep %}
+      <form method="post" action="{{ url_for('logout') }}" class="mt-3">
+        <button class="w-full text-left text-xs font-medium text-slate-400 hover:text-slate-600">Log out</button>
+      </form>
+      {% endif %}
     </div>
   </aside>
 
   <div class="flex-1 flex flex-col min-w-0">
     <header class="flex items-center gap-4 border-b border-slate-200 bg-white px-8 py-4">
-      <div class="relative flex-1 max-w-xl">
+      <form method="get" action="{{ url_for('search') }}" class="relative flex-1 max-w-xl">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" placeholder="Search accounts, contacts, deals..."
+        <input type="text" name="q" value="{{ request.args.get('q', '') if request.endpoint == 'search' else '' }}" placeholder="Search accounts, contacts, deals..."
                class="w-full rounded-lg bg-slate-100 pl-9 pr-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200">
-      </div>
+      </form>
       <div class="flex-1"></div>
       <div class="relative">
         <button id="new-menu-btn" class="flex items-center gap-1 rounded-full bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700">
@@ -72,9 +79,38 @@
           <button data-open-modal="modal-opportunity" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Opportunity</button>
         </div>
       </div>
-      <button class="text-slate-400 hover:text-slate-600">
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-      </button>
+      <div class="relative">
+        <button id="notif-btn" class="relative text-slate-400 hover:text-slate-600">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          {% if notification_count %}
+          <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{{ notification_count if notification_count < 10 else '9+' }}</span>
+          {% endif %}
+        </button>
+        <div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-lg z-20 max-h-96 overflow-y-auto">
+          <div class="px-4 py-3 border-b border-slate-100 text-sm font-semibold">Notifications</div>
+          {% if overdue_tasks %}
+          <div class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-400">OPEN TASKS</div>
+          {% for t in overdue_tasks %}
+          <div class="px-4 py-2 text-sm">
+            <div class="font-medium">{{ t.title }}</div>
+            <div class="text-xs text-slate-400">{{ t.subtitle }}</div>
+          </div>
+          {% endfor %}
+          {% endif %}
+          {% if recent_wins %}
+          <div class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-400">RECENT WINS</div>
+          {% for w in recent_wins %}
+          <div class="px-4 py-2 text-sm">
+            <div class="font-medium">{{ w.account_name }} — {{ w.name }}</div>
+            <div class="text-xs text-emerald-600">${{ '{:,}'.format(w.amount) }} closed {{ w.closed_at }}</div>
+          </div>
+          {% endfor %}
+          {% endif %}
+          {% if not overdue_tasks and not recent_wins %}
+          <div class="px-4 py-6 text-sm text-slate-400 text-center">You're all caught up.</div>
+          {% endif %}
+        </div>
+      </div>
     </header>
     <main class="flex-1 overflow-y-auto">
       {% block content %}{% endblock %}
@@ -170,6 +206,91 @@
       </div>
       <div>{{ field("Close Date") }}<input type="date" name="close_date" class="{{ input_cls }}"></div>
       <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Opportunity</button>
+    </form>
+  </div>
+
+  <!-- Edit modals: forms are populated + pointed at the right /<id>/edit URL via JS (see app.js) -->
+  <div id="modal-edit-lead" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Lead</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-lead" method="post" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Company") }}<input required name="company" class="{{ input_cls }}"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Status") }}
+          <select name="status" class="{{ input_cls }}">
+            {% for s in lead_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>{{ field("Source") }}
+          <select name="source" class="{{ input_cls }}">
+            {% for s in ['Web', 'Referral', 'Trade Show', 'Cold Call', 'Partner'] %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Value ($)") }}<input type="number" name="value" min="0" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="modal-edit-contact" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Contact</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-contact" method="post" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Title") }}<input name="title" class="{{ input_cls }}"></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Email") }}<input type="email" name="email" class="{{ input_cls }}"></div>
+        <div>{{ field("Phone") }}<input name="phone" class="{{ input_cls }}"></div>
+      </div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="modal-edit-account" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Account</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-account" method="post" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Industry") }}<input name="industry" class="{{ input_cls }}"></div>
+      <div>{{ field("Annual Revenue ($)") }}<input type="number" name="annual_revenue" min="0" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="modal-edit-opportunity" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Opportunity</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-opportunity" method="post" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Amount ($)") }}<input type="number" name="amount" min="0" class="{{ input_cls }}"></div>
+        <div>{{ field("Stage") }}
+          <select name="stage" class="{{ input_cls }}">
+            {% for s in stages %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Close Date") }}<input type="date" name="close_date" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
     </form>
   </div>
 

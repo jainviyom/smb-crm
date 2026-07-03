@@ -1,8 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="px-8 py-8">
-  <h1 class="text-2xl font-bold">Leads</h1>
-  <p class="text-slate-400 mt-1">{{ counts[status_filter] }} of {{ counts['All'] }} leads</p>
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">Leads</h1>
+      <p class="text-slate-400 mt-1">{{ counts[status_filter] }} of {{ counts['All'] }} leads</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('export_leads') }}" class="rounded-lg border border-slate-200 text-sm font-medium px-3 py-1.5 hover:bg-slate-50">Export CSV</a>
+      <button type="button" onclick="document.getElementById('import-leads-file').click()" class="rounded-lg border border-slate-200 text-sm font-medium px-3 py-1.5 hover:bg-slate-50">Import CSV</button>
+      <form id="import-leads-form" method="post" action="{{ url_for('import_leads') }}" enctype="multipart/form-data" class="hidden">
+        <input id="import-leads-file" type="file" name="file" accept=".csv" onchange="document.getElementById('import-leads-form').submit()">
+      </form>
+    </div>
+  </div>
 
   <div class="mt-5 flex gap-2">
     <a href="{{ url_for('leads', status='All') }}"
@@ -46,13 +57,21 @@
           <td class="px-6 py-4 text-slate-500">{{ lead.source }}</td>
           <td class="px-6 py-4 font-semibold stat-value">${{ '{:,}'.format(lead.value) }}</td>
           <td class="px-6 py-4 text-right">
-            {% if lead.converted %}
-              <span class="text-xs text-slate-400">Converted</span>
-            {% else %}
-            <form method="post" action="{{ url_for('convert_lead', lead_id=lead.id) }}">
-              <button class="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-1.5 hover:bg-slate-700">Convert</button>
-            </form>
-            {% endif %}
+            <div class="flex items-center justify-end gap-2">
+              {% if lead.converted %}
+                <span class="text-xs text-slate-400">Converted</span>
+              {% else %}
+              <form method="post" action="{{ url_for('convert_lead', lead_id=lead.id) }}">
+                <button class="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-1.5 hover:bg-slate-700">Convert</button>
+              </form>
+              {% endif %}
+              <button type="button" class="edit-trigger text-slate-400 hover:text-slate-700 text-xs font-medium px-2 py-1.5"
+                      data-entity="lead" data-id="{{ lead.id }}" data-name="{{ lead.name }}" data-company="{{ lead.company }}"
+                      data-status="{{ lead.status }}" data-source="{{ lead.source }}" data-value="{{ lead.value }}">Edit</button>
+              <form method="post" action="{{ url_for('delete_lead', lead_id=lead.id) }}" onsubmit="return confirm('Delete this lead?')">
+                <button class="text-red-400 hover:text-red-600 text-xs font-medium px-2 py-1.5">Delete</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}

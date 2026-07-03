@@ -1,8 +1,12 @@
 import sqlite3
 from pathlib import Path
 
+from werkzeug.security import generate_password_hash
+
 DB_PATH = Path(__file__).parent / "crm.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+
+DEMO_PASSWORD = "demo1234"
 
 
 def run():
@@ -11,10 +15,17 @@ def run():
 
     cur = conn.cursor()
 
-    # --- Reps ---
-    cur.execute("INSERT INTO reps (name, title) VALUES ('Maria Chen', 'Sales Rep')")
+    # --- Reps --- (demo login password for both: "demo1234")
+    pw_hash = generate_password_hash(DEMO_PASSWORD, method="pbkdf2:sha256")
+    cur.execute(
+        "INSERT INTO reps (name, title, email, password_hash) VALUES ('Maria Chen', 'Sales Rep', 'maria@smbcrm.demo', ?)",
+        (pw_hash,),
+    )
     maria = cur.lastrowid
-    cur.execute("INSERT INTO reps (name, title) VALUES ('Sam Patel', 'Sales Rep')")
+    cur.execute(
+        "INSERT INTO reps (name, title, email, password_hash) VALUES ('Sam Patel', 'Sales Rep', 'sam@smbcrm.demo', ?)",
+        (pw_hash,),
+    )
     sam = cur.lastrowid
 
     # --- Accounts ---
