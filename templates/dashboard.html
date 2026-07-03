@@ -50,14 +50,22 @@
       </div>
     </div>
     <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <div class="font-semibold">Tasks due today</div>
+      <div class="flex items-center justify-between">
+        <div class="font-semibold">Tasks due today</div>
+        <a href="{{ url_for('tasks_page') }}" class="text-xs font-medium text-blue-600 hover:text-blue-700">View all</a>
+      </div>
       <div class="mt-4 space-y-3">
         {% for task in tasks %}
         <div class="flex items-start gap-3 pb-3 {{ 'border-b border-slate-100' if not loop.last }}">
           <input type="checkbox" data-task-id="{{ task.id }}" class="task-toggle mt-1 h-4 w-4 rounded border-slate-300" {{ 'checked' if task.done }}>
           <div>
             <div class="text-sm font-medium {{ 'line-through text-slate-400' if task.done }}">{{ task.title }}</div>
-            <div class="text-xs text-slate-400">{{ task.subtitle }}</div>
+            {% set label = related_label(task.related_type, task.related_id) %}
+            {% if label %}
+              <a href="{{ related_url(task.related_type, task.related_id) }}" class="text-xs text-blue-600 hover:text-blue-700">{{ label }}</a>
+            {% else %}
+              <div class="text-xs text-slate-400">{{ task.subtitle }}</div>
+            {% endif %}
           </div>
         </div>
         {% endfor %}

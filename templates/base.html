@@ -29,6 +29,8 @@
           ('contacts', 'Contacts', 'M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z'),
           ('accounts', 'Accounts', 'M3 10.5 12 3l9 7.5V21a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1V10.5z'),
           ('opportunities', 'Opportunities', 'M4 20V10h3v10H4zm6.5 0V4h3v16h-3zM17 20v-7h3v7h-3z'),
+          ('cases', 'Cases', 'M2 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm10 0v4h4z'),
+          ('tasks_page', 'Tasks', 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'),
           ('reports', 'Reports', 'M4 20V10h3v10H4zm6.5 0V4h3v16h-3zM17 20v-7h3v7h-3z'),
         ] %}
         {% for endpoint, label, icon in nav_items %}
@@ -77,6 +79,8 @@
           <button data-open-modal="modal-contact" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Contact</button>
           <button data-open-modal="modal-account" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Account</button>
           <button data-open-modal="modal-opportunity" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Opportunity</button>
+          <button data-open-modal="modal-case" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Case</button>
+          <button data-open-modal="modal-task" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Task</button>
         </div>
       </div>
       <div class="relative">
@@ -97,6 +101,15 @@
           </div>
           {% endfor %}
           {% endif %}
+          {% if open_cases %}
+          <div class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-400">OPEN CASES</div>
+          {% for c in open_cases %}
+          <a href="{{ url_for('cases') }}" class="block px-4 py-2 text-sm hover:bg-slate-50">
+            <div class="font-medium">{{ c.subject }}</div>
+            <div class="text-xs text-slate-400">{{ c.account_name }} · {{ c.priority }} · {{ c.status }}</div>
+          </a>
+          {% endfor %}
+          {% endif %}
           {% if recent_wins %}
           <div class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-400">RECENT WINS</div>
           {% for w in recent_wins %}
@@ -106,7 +119,7 @@
           </div>
           {% endfor %}
           {% endif %}
-          {% if not overdue_tasks and not recent_wins %}
+          {% if not overdue_tasks and not recent_wins and not open_cases %}
           <div class="px-4 py-6 text-sm text-slate-400 text-center">You're all caught up.</div>
           {% endif %}
         </div>
@@ -209,6 +222,86 @@
     </form>
   </div>
 
+  <div id="modal-case" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Case</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_case') }}" class="space-y-3">
+      <div>{{ field("Subject") }}<input required name="subject" class="{{ input_cls }}"></div>
+      <div>{{ field("Description") }}<textarea name="description" rows="3" class="{{ input_cls }}"></textarea></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>{{ field("Contact (optional)") }}
+        <select name="contact_id" class="{{ input_cls }}">
+          <option value="">None</option>
+          {% for c in all_contacts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Status") }}
+          <select name="status" class="{{ input_cls }}">
+            {% for s in case_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>{{ field("Priority") }}
+          <select name="priority" class="{{ input_cls }}">
+            {% for p in priorities %}<option value="{{ p }}" {{ 'selected' if p == 'Medium' }}>{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Case</button>
+    </form>
+  </div>
+
+  <div id="modal-task" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Task</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_task') }}" class="space-y-3">
+      <div>{{ field("Title") }}<input required name="title" class="{{ input_cls }}"></div>
+      <div>{{ field("Note (optional)") }}<input name="subtitle" class="{{ input_cls }}"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Due") }}<input type="datetime-local" name="due_at" class="{{ input_cls }}"></div>
+        <div>{{ field("Priority") }}
+          <select name="priority" class="{{ input_cls }}">
+            {% for p in priorities %}<option value="{{ p }}" {{ 'selected' if p == 'Medium' }}>{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Related To") }}
+        <select name="related_type" class="{{ input_cls }} related-type-select">
+          <option value="">None</option>
+          <option value="lead">Lead</option>
+          <option value="contact">Contact</option>
+          <option value="account">Account</option>
+          <option value="opportunity">Opportunity</option>
+          <option value="case">Case</option>
+        </select>
+      </div>
+      <select name="related_id_lead" class="{{ input_cls }} related-picker hidden" data-type="lead" disabled>
+        {% for l in all_leads %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_contact" class="{{ input_cls }} related-picker hidden" data-type="contact" disabled>
+        {% for c in all_contacts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_account" class="{{ input_cls }} related-picker hidden" data-type="account" disabled>
+        {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_opportunity" class="{{ input_cls }} related-picker hidden" data-type="opportunity" disabled>
+        {% for o in all_opportunities %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_case" class="{{ input_cls }} related-picker hidden" data-type="case" disabled>
+        {% for c in all_cases %}<option value="{{ c.id }}">{{ c.subject }}</option>{% endfor %}
+      </select>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Task</button>
+    </form>
+  </div>
+
   <!-- Edit modals: forms are populated + pointed at the right /<id>/edit URL via JS (see app.js) -->
   <div id="modal-edit-lead" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
     <div class="flex items-center justify-between mb-4">
@@ -290,6 +383,86 @@
         </div>
       </div>
       <div>{{ field("Close Date") }}<input type="date" name="close_date" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="modal-edit-case" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Case</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-case" method="post" class="space-y-3">
+      <div>{{ field("Subject") }}<input required name="subject" class="{{ input_cls }}"></div>
+      <div>{{ field("Description") }}<textarea name="description" rows="3" class="{{ input_cls }}"></textarea></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>{{ field("Contact (optional)") }}
+        <select name="contact_id" class="{{ input_cls }}">
+          <option value="">None</option>
+          {% for c in all_contacts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Status") }}
+          <select name="status" class="{{ input_cls }}">
+            {% for s in case_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>{{ field("Priority") }}
+          <select name="priority" class="{{ input_cls }}">
+            {% for p in priorities %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
+    </form>
+  </div>
+
+  <div id="modal-edit-task" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">Edit Task</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form id="form-edit-task" method="post" class="space-y-3">
+      <div>{{ field("Title") }}<input required name="title" class="{{ input_cls }}"></div>
+      <div>{{ field("Note (optional)") }}<input name="subtitle" class="{{ input_cls }}"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Due") }}<input type="datetime-local" name="due_at" class="{{ input_cls }}"></div>
+        <div>{{ field("Priority") }}
+          <select name="priority" class="{{ input_cls }}">
+            {% for p in priorities %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Related To") }}
+        <select name="related_type" class="{{ input_cls }} related-type-select">
+          <option value="">None</option>
+          <option value="lead">Lead</option>
+          <option value="contact">Contact</option>
+          <option value="account">Account</option>
+          <option value="opportunity">Opportunity</option>
+          <option value="case">Case</option>
+        </select>
+      </div>
+      <select name="related_id_lead" class="{{ input_cls }} related-picker hidden" data-type="lead" disabled>
+        {% for l in all_leads %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_contact" class="{{ input_cls }} related-picker hidden" data-type="contact" disabled>
+        {% for c in all_contacts %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_account" class="{{ input_cls }} related-picker hidden" data-type="account" disabled>
+        {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_opportunity" class="{{ input_cls }} related-picker hidden" data-type="opportunity" disabled>
+        {% for o in all_opportunities %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}
+      </select>
+      <select name="related_id_case" class="{{ input_cls }} related-picker hidden" data-type="case" disabled>
+        {% for c in all_cases %}<option value="{{ c.id }}">{{ c.subject }}</option>{% endfor %}
+      </select>
       <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Save Changes</button>
     </form>
   </div>

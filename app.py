@@ -26,6 +26,16 @@ STAGE_PROBABILITY = {
     "Closed Won": 100,
 }
 LEAD_STATUSES = ["New", "Working", "Qualified", "Unqualified"]
+CASE_STATUSES = ["New", "In Progress", "Escalated", "Closed"]
+PRIORITIES = ["Low", "Medium", "High", "Urgent"]
+RELATED_TYPES = ["lead", "contact", "account", "opportunity", "case"]
+RELATED_TABLE_MAP = {
+    "lead": ("leads", "name"),
+    "contact": ("contacts", "name"),
+    "account": ("accounts", "name"),
+    "opportunity": ("opportunities", "name"),
+    "case": ("cases", "subject"),
+}
 
 # Fixed reference "today" so date-range stats stay meaningful regardless of
 # when this demo is actually run (the seed data is written relative to it).
@@ -48,6 +58,35 @@ def log_activity(conn, contact_id, kind, description):
     )
 
 
+def related_url(related_type, related_id):
+    if not related_type or not related_id:
+        return None
+    if related_type == "contact":
+        return url_for("contacts", id=related_id)
+    if related_type == "account":
+        return url_for("accounts", id=related_id)
+    if related_type == "lead":
+        return url_for("leads")
+    if related_type == "opportunity":
+        return url_for("opportunities")
+    if related_type == "case":
+        return url_for("cases")
+    return None
+
+
+def related_label(related_type, related_id):
+    if not related_type or not related_id or related_type not in RELATED_TABLE_MAP:
+        return None
+    conn = db.get_db()
+    table, col = RELATED_TABLE_MAP[related_type]
+    row = conn.execute(f"SELECT {col} AS label FROM {table} WHERE id = ?", (related_id,)).fetchone()
+    return row["label"] if row else None
+
+
+app.jinja_env.globals["related_url"] = related_url
+app.jinja_env.globals["related_label"] = related_label
+
+
 @app.before_request
 def require_login():
     if request.endpoint in PUBLIC_ENDPOINTS or request.endpoint is None:
@@ -60,6 +99,10 @@ def require_login():
 def inject_globals():
     conn = db.get_db()
     all_accounts = conn.execute("SELECT id, name FROM accounts ORDER BY name").fetchall()
+    all_contacts = conn.execute("SELECT id, name FROM contacts ORDER BY name").fetchall()
+    all_leads = conn.execute("SELECT id, name FROM leads WHERE converted = 0 ORDER BY name").fetchall()
+    all_opportunities = conn.execute("SELECT id, name FROM opportunities ORDER BY name").fetchall()
+    all_cases = conn.execute("SELECT id, subject FROM cases ORDER BY subject").fetchall()
     rep = current_rep(conn) if "rep_id" in session else None
     overdue_tasks = conn.execute(
         "SELECT * FROM tasks WHERE done = 0 ORDER BY due_at"
@@ -70,14 +113,29 @@ def inject_globals():
            WHERE o.stage = 'Closed Won' AND o.closed_at IS NOT NULL
            ORDER BY o.closed_at DESC LIMIT 3"""
     ).fetchall() if rep else []
+    open_cases = conn.execute(
+        """SELECT c.*, a.name AS account_name FROM cases c
+           JOIN accounts a ON a.id = c.account_id
+           WHERE c.status != 'Closed'
+           ORDER BY CASE c.priority WHEN 'Urgent' THEN 0 WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END
+           LIMIT 5"""
+    ).fetchall() if rep else []
     return {
         "all_accounts": all_accounts,
+        "all_contacts": all_contacts,
+        "all_leads": all_leads,
+        "all_opportunities": all_opportunities,
+        "all_cases": all_cases,
         "lead_statuses": LEAD_STATUSES,
+        "case_statuses": CASE_STATUSES,
+        "priorities": PRIORITIES,
+        "related_types": RELATED_TYPES,
         "stages": STAGES,
         "current_rep_ctx": rep,
         "overdue_tasks": overdue_tasks,
         "recent_wins": recent_wins,
-        "notification_count": len(overdue_tasks),
+        "open_cases": open_cases,
+        "notification_count": len(overdue_tasks) + len(open_cases),
     }
 
 
@@ -177,7 +235,7 @@ def dashboard():
     for row in pipeline_by_stage:
         row["pct"] = max(6, round(100 * row["total"] / max_amount))
 
-    tasks = conn.execute("SELECT * FROM tasks ORDER BY due_at").fetchall()
+    tasks = conn.execute("SELECT * FROM tasks ORDER BY done, due_at LIMIT 5").fetchall()
 
     top_opps = conn.execute(
         """SELECT o.*, a.name AS account_name FROM opportunities o
@@ -555,6 +613,173 @@ def update_stage(opp_id):
             log_activity(conn, first_contact["id"], "stage", f"Opportunity “{opp['name']}” moved to {stage}")
     conn.commit()
     return jsonify({"ok": True})
+
+
+@app.route("/cases")
+def cases():
+    conn = db.get_db()
+    rep = current_rep(conn)
+    status_filter = request.args.get("status", "All")
+
+    counts = {"All": conn.execute("SELECT COUNT(*) c FROM cases").fetchone()["c"]}
+    for s in CASE_STATUSES:
+        counts[s] = conn.execute("SELECT COUNT(*) c FROM cases WHERE status = ?", (s,)).fetchone()["c"]
+
+    query = """SELECT c.*, a.name AS account_name, ct.name AS contact_name FROM cases c
+               JOIN accounts a ON a.id = c.account_id
+               LEFT JOIN contacts ct ON ct.id = c.contact_id"""
+    if status_filter == "All":
+        rows = conn.execute(query + " ORDER BY c.id DESC").fetchall()
+    else:
+        rows = conn.execute(query + " WHERE c.status = ? ORDER BY c.id DESC", (status_filter,)).fetchall()
+
+    return render_template(
+        "cases.html", rep=rep, cases=rows, counts=counts, status_filter=status_filter, statuses=CASE_STATUSES
+    )
+
+
+@app.route("/cases/new", methods=["POST"])
+def new_case():
+    conn = db.get_db()
+    rep = current_rep(conn)
+    conn.execute(
+        """INSERT INTO cases (subject, description, status, priority, account_id, contact_id, rep_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            request.form["subject"].strip(),
+            request.form.get("description", "").strip(),
+            request.form.get("status", "New"),
+            request.form.get("priority", "Medium"),
+            request.form["account_id"],
+            request.form.get("contact_id") or None,
+            rep["id"],
+            ANCHOR_DATE.isoformat(),
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("cases"))
+
+
+@app.route("/cases/<int:case_id>/edit", methods=["POST"])
+def edit_case(case_id):
+    conn = db.get_db()
+    status = request.form.get("status", "New")
+    existing = conn.execute("SELECT closed_at FROM cases WHERE id = ?", (case_id,)).fetchone()
+    closed_at = existing["closed_at"] if existing else None
+    if status == "Closed" and not closed_at:
+        closed_at = ANCHOR_DATE.isoformat()
+    elif status != "Closed":
+        closed_at = None
+    conn.execute(
+        """UPDATE cases SET subject=?, description=?, status=?, priority=?, account_id=?, contact_id=?, closed_at=?
+           WHERE id=?""",
+        (
+            request.form["subject"].strip(),
+            request.form.get("description", "").strip(),
+            status,
+            request.form.get("priority", "Medium"),
+            request.form["account_id"],
+            request.form.get("contact_id") or None,
+            closed_at,
+            case_id,
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("cases"))
+
+
+@app.route("/cases/<int:case_id>/delete", methods=["POST"])
+def delete_case(case_id):
+    conn = db.get_db()
+    conn.execute("UPDATE tasks SET related_type = NULL, related_id = NULL WHERE related_type = 'case' AND related_id = ?", (case_id,))
+    conn.execute("DELETE FROM cases WHERE id = ?", (case_id,))
+    conn.commit()
+    return redirect(url_for("cases"))
+
+
+@app.route("/cases/export.csv")
+def export_cases():
+    conn = db.get_db()
+    rows = conn.execute(
+        """SELECT c.subject, a.name AS account_name, c.status, c.priority, c.created_at, c.closed_at
+           FROM cases c JOIN accounts a ON a.id = c.account_id ORDER BY c.id DESC"""
+    ).fetchall()
+    return _csv_response(
+        "cases.csv",
+        ["Subject", "Account", "Status", "Priority", "Created At", "Closed At"],
+        [[r["subject"], r["account_name"], r["status"], r["priority"], r["created_at"], r["closed_at"] or ""] for r in rows],
+    )
+
+
+@app.route("/tasks")
+def tasks_page():
+    conn = db.get_db()
+    rep = current_rep(conn)
+    status_filter = request.args.get("status", "Open")
+
+    counts = {
+        "Open": conn.execute("SELECT COUNT(*) c FROM tasks WHERE done = 0").fetchone()["c"],
+        "Done": conn.execute("SELECT COUNT(*) c FROM tasks WHERE done = 1").fetchone()["c"],
+    }
+    counts["All"] = counts["Open"] + counts["Done"]
+
+    if status_filter == "Open":
+        rows = conn.execute("SELECT * FROM tasks WHERE done = 0 ORDER BY due_at").fetchall()
+    elif status_filter == "Done":
+        rows = conn.execute("SELECT * FROM tasks WHERE done = 1 ORDER BY due_at DESC").fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM tasks ORDER BY due_at").fetchall()
+
+    return render_template("tasks.html", rep=rep, tasks=rows, counts=counts, status_filter=status_filter)
+
+
+@app.route("/tasks/new", methods=["POST"])
+def new_task():
+    conn = db.get_db()
+    related_type = request.form.get("related_type") or None
+    related_id = request.form.get(f"related_id_{related_type}") or None
+    conn.execute(
+        "INSERT INTO tasks (title, subtitle, due_at, done, priority, related_type, related_id) VALUES (?, ?, ?, 0, ?, ?, ?)",
+        (
+            request.form["title"].strip(),
+            request.form.get("subtitle", "").strip(),
+            request.form.get("due_at") or ANCHOR_DATE.isoformat(),
+            request.form.get("priority", "Medium"),
+            related_type,
+            related_id,
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("tasks_page"))
+
+
+@app.route("/tasks/<int:task_id>/edit", methods=["POST"])
+def edit_task(task_id):
+    conn = db.get_db()
+    related_type = request.form.get("related_type") or None
+    related_id = request.form.get(f"related_id_{related_type}") or None
+    conn.execute(
+        "UPDATE tasks SET title=?, subtitle=?, due_at=?, priority=?, related_type=?, related_id=? WHERE id=?",
+        (
+            request.form["title"].strip(),
+            request.form.get("subtitle", "").strip(),
+            request.form.get("due_at") or ANCHOR_DATE.isoformat(),
+            request.form.get("priority", "Medium"),
+            related_type,
+            related_id,
+            task_id,
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("tasks_page"))
+
+
+@app.route("/tasks/<int:task_id>/delete", methods=["POST"])
+def delete_task(task_id):
+    conn = db.get_db()
+    conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    return redirect(url_for("tasks_page"))
 
 
 @app.route("/tasks/<int:task_id>/toggle", methods=["POST"])

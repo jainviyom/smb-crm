@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS activities;
 DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS cases;
 DROP TABLE IF EXISTS opportunities;
 DROP TABLE IF EXISTS contacts;
 DROP TABLE IF EXISTS accounts;
@@ -61,10 +62,26 @@ CREATE TABLE activities (
     occurred_at TEXT NOT NULL
 );
 
+CREATE TABLE cases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK (status IN ('New','In Progress','Escalated','Closed')) DEFAULT 'New',
+    priority TEXT NOT NULL CHECK (priority IN ('Low','Medium','High','Urgent')) DEFAULT 'Medium',
+    account_id INTEGER NOT NULL REFERENCES accounts(id),
+    contact_id INTEGER REFERENCES contacts(id),
+    rep_id INTEGER REFERENCES reps(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    closed_at TEXT
+);
+
 CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     subtitle TEXT NOT NULL,
     due_at TEXT NOT NULL,
-    done INTEGER NOT NULL DEFAULT 0
+    done INTEGER NOT NULL DEFAULT 0,
+    priority TEXT NOT NULL CHECK (priority IN ('Low','Medium','High','Urgent')) DEFAULT 'Medium',
+    related_type TEXT CHECK (related_type IN ('lead','contact','account','opportunity','case')),
+    related_id INTEGER
 );

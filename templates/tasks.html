@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8">
+  <h1 class="text-2xl font-bold">Tasks</h1>
+  <p class="text-slate-400 mt-1">{{ counts[status_filter] }} of {{ counts['All'] }} tasks</p>
+
+  <div class="mt-5 flex gap-2">
+    {% for s in ['Open', 'Done', 'All'] %}
+    <a href="{{ url_for('tasks_page', status=s) }}"
+       class="rounded-full px-4 py-1.5 text-sm font-medium {{ 'bg-slate-900 text-white' if status_filter == s else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+      {{ s }} ({{ counts[s] }})
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-6 rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold tracking-wide text-slate-400 border-b border-slate-100">
+          <th class="px-6 py-3 font-semibold" style="width:36px"></th>
+          <th class="px-6 py-3 font-semibold">TASK</th>
+          <th class="px-6 py-3 font-semibold">RELATED TO</th>
+          <th class="px-6 py-3 font-semibold">DUE</th>
+          <th class="px-6 py-3 font-semibold">PRIORITY</th>
+          <th class="px-6 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set priority_colors = {
+          'Low': 'bg-slate-100 text-slate-500',
+          'Medium': 'bg-blue-50 text-blue-600',
+          'High': 'bg-amber-50 text-amber-700',
+          'Urgent': 'bg-red-50 text-red-600',
+        } %}
+        {% for t in tasks %}
+        <tr class="border-b border-slate-50 last:border-0">
+          <td class="px-6 py-4"><input type="checkbox" data-task-id="{{ t.id }}" class="task-toggle h-4 w-4 rounded border-slate-300" {{ 'checked' if t.done }}></td>
+          <td class="px-6 py-4">
+            <div class="font-semibold {{ 'line-through text-slate-400' if t.done }}">{{ t.title }}</div>
+            {% if t.subtitle %}<div class="text-xs text-slate-400">{{ t.subtitle }}</div>{% endif %}
+          </td>
+          <td class="px-6 py-4 text-slate-500">
+            {% set label = related_label(t.related_type, t.related_id) %}
+            {% if label %}
+              <a href="{{ related_url(t.related_type, t.related_id) }}" class="hover:text-blue-600">{{ label }}</a>
+              <span class="text-xs text-slate-400">({{ t.related_type }})</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="px-6 py-4 text-slate-500 stat-value">{{ t.due_at.replace('T', ' ') }}</td>
+          <td class="px-6 py-4">
+            <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ priority_colors[t.priority] }}">{{ t.priority }}</span>
+          </td>
+          <td class="px-6 py-4 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button type="button" class="edit-trigger text-slate-400 hover:text-slate-700 text-xs font-medium px-2 py-1.5"
+                      data-entity="task" data-id="{{ t.id }}" data-title="{{ t.title }}" data-subtitle="{{ t.subtitle }}"
+                      data-due_at="{{ t.due_at }}" data-priority="{{ t.priority }}"
+                      data-related_type="{{ t.related_type or '' }}" data-related_id="{{ t.related_id or '' }}">Edit</button>
+              <form method="post" action="{{ url_for('delete_task', task_id=t.id) }}" onsubmit="return confirm('Delete this task?')">
+                <button class="text-red-400 hover:text-red-600 text-xs font-medium px-2 py-1.5">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="px-6 py-10 text-center text-slate-400">No tasks here.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

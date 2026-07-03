@@ -40,7 +40,33 @@ document.querySelectorAll("[data-open-modal]").forEach((btn) => {
 // Edit-record triggers: populate the matching hidden edit form from data-*
 // attributes (data-account_id maps straight to a form field named account_id —
 // underscores pass through the dataset API unchanged, only hyphens camelCase).
-const ENTITY_PATHS = { lead: "leads", contact: "contacts", account: "accounts", opportunity: "opportunities" };
+const ENTITY_PATHS = {
+  lead: "leads",
+  contact: "contacts",
+  account: "accounts",
+  opportunity: "opportunities",
+  case: "cases",
+  task: "tasks",
+};
+
+// Dependent "Related To" picker (New/Edit Task modals): only the select
+// matching the chosen related_type is visible + enabled, so only its value
+// is submitted under its own field name (related_id_<type>).
+function updateRelatedPickers(form, type) {
+  form.querySelectorAll(".related-picker").forEach((sel) => {
+    if (sel.dataset.type === type) {
+      sel.classList.remove("hidden");
+      sel.disabled = false;
+    } else {
+      sel.classList.add("hidden");
+      sel.disabled = true;
+    }
+  });
+}
+document.querySelectorAll(".related-type-select").forEach((sel) => {
+  sel.addEventListener("change", () => updateRelatedPickers(sel.closest("form"), sel.value));
+});
+
 document.querySelectorAll(".edit-trigger").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -54,6 +80,14 @@ document.querySelectorAll(".edit-trigger").forEach((btn) => {
       const field = form.querySelector(`[name="${key}"]`);
       if (field) field.value = val;
     });
+    if (entity === "task") {
+      const relType = btn.dataset.related_type || "";
+      updateRelatedPickers(form, relType);
+      if (relType) {
+        const picker = form.querySelector(`.related-picker[data-type="${relType}"]`);
+        if (picker) picker.value = btn.dataset.related_id || "";
+      }
+    }
     openModal(`modal-edit-${entity}`);
   });
 });

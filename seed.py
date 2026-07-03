@@ -59,11 +59,13 @@ def run():
         ("Tara Simmons", "Coastal Freight", "Unqualified", "Web", 4200),
         ("Ibrahim Saad", "Meridian Health", "New", "Referral", 15600),
     ]
+    lead_id = {}
     for name, company, status, source, value in leads:
         cur.execute(
             "INSERT INTO leads (name, company, status, source, value) VALUES (?,?,?,?,?)",
             (name, company, status, source, value),
         )
+        lead_id[name] = cur.lastrowid
 
     # --- Contacts ---
     contacts = [
@@ -107,11 +109,13 @@ def run():
         ("Fleet renewal", "Acme Logistics", maria, 64000, "Negotiation", "2026-07-18"),
         ("Fleet expansion", "Coastal Freight", sam, 52000, "Negotiation", "2026-07-22"),
     ]
+    opp_id = {}
     for name, company, rep, amount, stage, close_date in open_opps:
         cur.execute(
             "INSERT INTO opportunities (name, account_id, rep_id, amount, stage, close_date, closed_at) VALUES (?,?,?,?,?,?,NULL)",
             (name, account_id[company], rep, amount, stage, close_date),
         )
+        opp_id[name] = cur.lastrowid
 
     # --- Closed Won history (drives Reports / leaderboard, spread over the past year) ---
     closed_won = [
@@ -152,16 +156,41 @@ def run():
             (name, account_id[company], rep, amount, closed_at, closed_at),
         )
 
-    # --- Tasks due today ---
-    tasks = [
-        ("Call Jordan Reyes — renewal", "Acme Logistics · 10:30 AM", "2026-07-03T10:30", 0),
-        ("Send proposal follow-up", "Brightleaf Co · 1:00 PM", "2026-07-03T13:00", 1),
-        ("Demo prep — Northgate", "Northgate Retail · 3:30 PM", "2026-07-03T15:30", 0),
+    # --- Cases ---
+    cases = [
+        ("Fleet tracking sensor malfunction", "Several trucks reporting stale GPS pings since the firmware update.",
+         "Escalated", "Urgent", "Acme Logistics", "Jordan Reyes", maria, "2026-07-02", None),
+        ("Login issues with POS system", "Store managers locked out after password policy change.",
+         "In Progress", "High", "Northgate Retail", "Elena Torres", maria, "2026-06-29", None),
+        ("Invoice discrepancy - Q2", "Customer flagged a $1,200 mismatch on the Q2 statement.",
+         "New", "Medium", "Ridgeline Foods", "Priya Nathan", maria, "2026-07-01", None),
+        ("Feature request: bulk export", "Asking for a CSV export of merchandising reports.",
+         "New", "Low", "Brightleaf Co", "Felix Grant", maria, "2026-06-30", None),
+        ("Onboarding question resolved", "Clarified how to add new practice locations.",
+         "Closed", "Medium", "Vista Dental Group", "Owen Castillo", sam, "2026-06-20", "2026-06-21"),
     ]
-    for title, subtitle, due_at, done in tasks:
+    case_id = {}
+    for subject, desc, status, priority, company, contact, rep, created_at, closed_at in cases:
         cur.execute(
-            "INSERT INTO tasks (title, subtitle, due_at, done) VALUES (?,?,?,?)",
-            (title, subtitle, due_at, done),
+            """INSERT INTO cases (subject, description, status, priority, account_id, contact_id, rep_id, created_at, closed_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (subject, desc, status, priority, account_id[company], contact_id[contact], rep, created_at, closed_at),
+        )
+        case_id[subject] = cur.lastrowid
+
+    # --- Tasks due today (linked to real records where relevant) ---
+    tasks = [
+        ("Call Jordan Reyes — renewal", "Acme Logistics · 10:30 AM", "2026-07-03T10:30", 0, "High", "contact", contact_id["Jordan Reyes"]),
+        ("Send proposal follow-up", "Brightleaf Co · 1:00 PM", "2026-07-03T13:00", 1, "Medium", "account", account_id["Brightleaf Co"]),
+        ("Demo prep — Northgate", "Northgate Retail · 3:30 PM", "2026-07-03T15:30", 0, "Medium", "account", account_id["Northgate Retail"]),
+        ("Follow up on new lead — Dana Whitfield", "Bluepeak Retail · 4:00 PM", "2026-07-03T16:00", 0, "Medium", "lead", lead_id["Dana Whitfield"]),
+        ("Review escalated case — sensor malfunction", "Acme Logistics · 5:00 PM", "2026-07-03T17:00", 0, "Urgent", "case", case_id["Fleet tracking sensor malfunction"]),
+        ("Prep fleet renewal contract", "Acme Logistics · Tomorrow", "2026-07-04T09:00", 0, "High", "opportunity", opp_id["Fleet renewal"]),
+    ]
+    for title, subtitle, due_at, done, priority, related_type, related_id in tasks:
+        cur.execute(
+            "INSERT INTO tasks (title, subtitle, due_at, done, priority, related_type, related_id) VALUES (?,?,?,?,?,?,?)",
+            (title, subtitle, due_at, done, priority, related_type, related_id),
         )
 
     conn.commit()

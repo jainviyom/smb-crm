@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 crm.db
 .venv/
+.DS_Store
