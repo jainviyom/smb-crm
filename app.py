@@ -3,6 +3,10 @@ from datetime import date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, jsonify, abort
 
 import db
+import seed
+
+if not db.DB_PATH.exists():
+    seed.run()
 
 app = Flask(__name__)
 db.init_app(app)
