@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex h-full">
+  <div class="w-72 shrink-0 border-r border-slate-200 px-6 py-8 overflow-y-auto">
+    <h1 class="text-2xl font-bold mb-5">Accounts</h1>
+    <div class="space-y-1">
+      {% for a in accounts %}
+      <a href="{{ url_for('accounts', id=a.id) }}"
+         class="block rounded-lg px-3 py-2 {{ 'bg-slate-100' if selected and a.id == selected.id else 'hover:bg-slate-50' }}">
+        <div class="text-sm font-semibold">{{ a.name }}</div>
+        <div class="text-xs text-slate-400">{{ a.industry }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="flex-1 px-10 py-8">
+    {% if selected %}
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="text-xl font-bold">{{ selected.name }}</div>
+        <div class="text-slate-400">{{ selected.industry }} · Owner {{ rep['name'] }}</div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs font-semibold tracking-wide text-slate-400">ANNUAL REVENUE</div>
+        <div class="text-2xl font-bold stat-value">${{ '{:,}'.format(selected.annual_revenue) }}</div>
+      </div>
+    </div>
+
+    <div class="mt-6 border-b border-slate-200 flex gap-6 text-sm font-medium">
+      {% for t in ['overview', 'contacts', 'opportunities'] %}
+      <a href="{{ url_for('accounts', id=selected.id, tab=t) }}"
+         class="pb-3 -mb-px {{ 'border-b-2 border-slate-900 text-slate-900' if tab == t else 'text-slate-400 hover:text-slate-600' }}">
+        {{ t|capitalize }}
+      </a>
+      {% endfor %}
+    </div>
+
+    {% if tab == 'overview' %}
+    <div class="mt-6 grid grid-cols-2 gap-4 max-w-2xl">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <div class="text-xs font-semibold tracking-wide text-slate-400">OPEN OPPORTUNITIES</div>
+        <div class="text-2xl font-bold mt-1">{{ open_opp_count }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <div class="text-xs font-semibold tracking-wide text-slate-400">CONTACTS ON FILE</div>
+        <div class="text-2xl font-bold mt-1">{{ account_contacts|length }}</div>
+      </div>
+    </div>
+    {% elif tab == 'contacts' %}
+    <div class="mt-6 rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 max-w-2xl">
+      {% for c in account_contacts %}
+      <a href="{{ url_for('contacts', id=c.id) }}" class="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
+        <div>
+          <div class="text-sm font-semibold">{{ c.name }}</div>
+          <div class="text-xs text-slate-400">{{ c.title }}</div>
+        </div>
+        <div class="text-xs text-slate-400">{{ c.email }}</div>
+      </a>
+      {% else %}
+      <div class="px-5 py-4 text-sm text-slate-400">No contacts on file.</div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="mt-6 rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 max-w-2xl">
+      {% for o in account_opps %}
+      <div class="flex items-center justify-between px-5 py-4">
+        <div>
+          <div class="text-sm font-semibold">{{ o.name }}</div>
+          <div class="text-xs text-slate-400">{{ o.stage }}</div>
+        </div>
+        <div class="font-semibold stat-value">${{ '{:,}'.format(o.amount) }}</div>
+      </div>
+      {% else %}
+      <div class="px-5 py-4 text-sm text-slate-400">No opportunities yet.</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-slate-400">No accounts yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

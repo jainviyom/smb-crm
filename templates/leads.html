@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8">
+  <h1 class="text-2xl font-bold">Leads</h1>
+  <p class="text-slate-400 mt-1">{{ counts[status_filter] }} of {{ counts['All'] }} leads</p>
+
+  <div class="mt-5 flex gap-2">
+    <a href="{{ url_for('leads', status='All') }}"
+       class="rounded-full px-4 py-1.5 text-sm font-medium {{ 'bg-slate-900 text-white' if status_filter == 'All' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+      All ({{ counts['All'] }})
+    </a>
+    {% for s in statuses %}
+    <a href="{{ url_for('leads', status=s) }}"
+       class="rounded-full px-4 py-1.5 text-sm font-medium {{ 'bg-slate-900 text-white' if status_filter == s else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+      {{ s }} ({{ counts[s] }})
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-6 rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-semibold tracking-wide text-slate-400 border-b border-slate-100">
+          <th class="px-6 py-3 font-semibold">NAME</th>
+          <th class="px-6 py-3 font-semibold">COMPANY</th>
+          <th class="px-6 py-3 font-semibold">STATUS</th>
+          <th class="px-6 py-3 font-semibold">SOURCE</th>
+          <th class="px-6 py-3 font-semibold">VALUE</th>
+          <th class="px-6 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set badge_colors = {
+          'New': 'bg-blue-50 text-blue-600',
+          'Working': 'bg-amber-50 text-amber-700',
+          'Qualified': 'bg-emerald-50 text-emerald-700',
+          'Unqualified': 'bg-slate-100 text-slate-400',
+        } %}
+        {% for lead in leads %}
+        <tr class="border-b border-slate-50 last:border-0">
+          <td class="px-6 py-4 font-semibold">{{ lead.name }}</td>
+          <td class="px-6 py-4 text-slate-500">{{ lead.company }}</td>
+          <td class="px-6 py-4">
+            <span class="rounded-full px-2.5 py-0.5 text-xs font-medium {{ badge_colors[lead.status] }}">{{ lead.status }}</span>
+          </td>
+          <td class="px-6 py-4 text-slate-500">{{ lead.source }}</td>
+          <td class="px-6 py-4 font-semibold stat-value">${{ '{:,}'.format(lead.value) }}</td>
+          <td class="px-6 py-4 text-right">
+            {% if lead.converted %}
+              <span class="text-xs text-slate-400">Converted</span>
+            {% else %}
+            <form method="post" action="{{ url_for('convert_lead', lead_id=lead.id) }}">
+              <button class="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-1.5 hover:bg-slate-700">Convert</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

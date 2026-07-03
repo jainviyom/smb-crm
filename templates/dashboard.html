@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8 max-w-6xl">
+  <h1 class="text-2xl font-bold">Good morning, {{ rep['name'].split()[0] if rep else 'Maria' }}</h1>
+  <p class="text-slate-400 mt-1">Here's what's happening across your pipeline today</p>
+
+  <div class="mt-8 flex items-end justify-between border-b border-slate-200 pb-6">
+    <div>
+      <div class="text-xs font-semibold tracking-wide text-slate-400">OPEN PIPELINE</div>
+      <div class="text-5xl font-extrabold mt-1 stat-value">${{ '{:,}'.format(open_pipeline) }}</div>
+      <div class="mt-2 text-sm font-medium text-emerald-600">▲ {{ open_deal_count }} open deals</div>
+    </div>
+    <svg class="h-16 w-40 text-blue-500" viewBox="0 0 160 60" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="0,45 20,38 35,42 50,30 65,34 80,20 95,24 110,12 125,16 140,4"/>
+    </svg>
+  </div>
+
+  <div class="mt-6 grid grid-cols-3 gap-4">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">WON THIS MONTH</div>
+      <div class="text-3xl font-bold mt-1 stat-value">${{ '{:,}'.format(won_this_month) }}</div>
+      <div class="mt-1 text-sm text-emerald-600">{{ won_month_count }} deals closed</div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">NEW LEADS</div>
+      <div class="text-3xl font-bold mt-1 stat-value">{{ new_leads }}</div>
+      <div class="mt-1 text-sm {{ 'text-orange-600' if new_leads_delta < 0 else 'text-emerald-600' }}">
+        {{ '▼' if new_leads_delta < 0 else '▲' }} {{ new_leads_delta|abs }} vs last week
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">WIN RATE</div>
+      <div class="text-3xl font-bold mt-1 stat-value">{{ win_rate }}%</div>
+      <div class="mt-1 text-sm text-slate-400">vs last quarter</div>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-[1fr_360px] gap-4">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="font-semibold">Pipeline by stage</div>
+      <div class="mt-6 flex gap-4">
+        {% for row in pipeline_by_stage %}
+        <div class="flex flex-col items-center flex-1">
+          <div class="w-full h-32 flex items-end">
+            <div class="w-full rounded-t-md" style="height: {{ row.pct }}%; background-color: {{ ['#dbe4ff','#b9c6ff','#8ea2f5','#5a72e6','#2f46c9'][loop.index0] }};"></div>
+          </div>
+          <div class="mt-2 text-xs text-slate-400">{{ row.stage }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="font-semibold">Tasks due today</div>
+      <div class="mt-4 space-y-3">
+        {% for task in tasks %}
+        <div class="flex items-start gap-3 pb-3 {{ 'border-b border-slate-100' if not loop.last }}">
+          <input type="checkbox" data-task-id="{{ task.id }}" class="task-toggle mt-1 h-4 w-4 rounded border-slate-300" {{ 'checked' if task.done }}>
+          <div>
+            <div class="text-sm font-medium {{ 'line-through text-slate-400' if task.done }}">{{ task.title }}</div>
+            <div class="text-xs text-slate-400">{{ task.subtitle }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 rounded-xl border border-slate-200 bg-white p-5">
+    <div class="font-semibold mb-2">Top opportunities</div>
+    {% for opp in top_opps %}
+    <div class="flex items-center justify-between py-3 {{ 'border-b border-slate-100' if not loop.last }}">
+      <div>
+        <div class="text-sm font-medium">{{ opp.account_name }} — {{ opp.name }}</div>
+        <div class="text-xs text-slate-400">{{ opp.stage }}</div>
+      </div>
+      <div class="font-semibold stat-value">${{ '{:,}'.format(opp.amount) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

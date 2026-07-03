@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8">
+  <h1 class="text-2xl font-bold">Opportunities</h1>
+  <p class="text-slate-400 mt-1">Drag cards between stages to update the pipeline</p>
+
+  <div class="mt-6 grid grid-cols-5 gap-4 items-start">
+    {% for stage in stages %}
+    {% set col = columns[stage] %}
+    <div class="kanban-column rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[200px] transition-colors" data-stage="{{ stage }}">
+      <div class="px-1 pb-2">
+        <div class="text-sm font-semibold">{{ stage }}</div>
+        <div class="text-xs text-slate-400">{{ col.count }} deals · ${{ '{:,}'.format(col.total) }}</div>
+      </div>
+      <div class="space-y-3">
+        {% for deal in col.deals %}
+        <div class="kanban-card rounded-lg bg-white border border-slate-200 p-4 shadow-sm" draggable="true" data-opp-id="{{ deal.id }}">
+          <div class="text-sm font-semibold">{{ deal.name }}</div>
+          <div class="text-xs text-slate-400">{{ deal.account_name }}</div>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="font-semibold text-sm stat-value">${{ '{:,}'.format(deal.amount) }}</span>
+            <span class="text-xs text-slate-400">{{ deal.close_date[5:] if deal.stage != 'Closed Won' else deal.closed_at[5:] }}</span>
+          </div>
+          <div class="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full {{ 'bg-emerald-500' if stage == 'Closed Won' else 'bg-blue-500' }}" style="width: {{ stage_probability[stage] }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

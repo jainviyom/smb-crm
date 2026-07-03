@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-8 py-8">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">Reports</h1>
+      <p class="text-slate-400 mt-1">Performance across your team</p>
+    </div>
+    <div class="flex gap-1 rounded-full bg-slate-100 p-1">
+      {% for key, label in [('month', 'This Month'), ('quarter', 'This Quarter'), ('year', 'This Year')] %}
+      <a href="{{ url_for('reports', range=key) }}"
+         class="rounded-full px-4 py-1.5 text-sm font-medium {{ 'bg-slate-900 text-white' if range_ == key else 'text-slate-500 hover:text-slate-700' }}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-3 gap-4 max-w-4xl">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">REVENUE WON</div>
+      <div class="text-3xl font-bold mt-1 stat-value">${{ '{:,}'.format(revenue_won) }}</div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">DEALS CLOSED</div>
+      <div class="text-3xl font-bold mt-1">{{ deals_closed }}</div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="text-xs font-semibold tracking-wide text-slate-400">AVG DEAL SIZE</div>
+      <div class="text-3xl font-bold mt-1 stat-value">${{ '{:,}'.format(avg_deal_size) }}</div>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-2 gap-4 max-w-4xl">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="font-semibold mb-3">Lead source breakdown</div>
+      <div class="space-y-3">
+        {% for s in lead_sources %}
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span>{{ s.source }}</span>
+            <span class="text-slate-400">{{ s.pct }}%</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-blue-500" style="width: {{ s.pct }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <div class="font-semibold mb-3">Rep leaderboard</div>
+      <div class="divide-y divide-slate-100">
+        {% for row in leaderboard %}
+        <div class="flex items-center justify-between py-3 {{ 'pt-0' if loop.first }}">
+          <div>
+            <div class="text-sm font-semibold">{{ row.name }}</div>
+            <div class="text-xs text-slate-400">{{ row.deals_won }} deals won</div>
+          </div>
+          <div class="font-semibold stat-value">${{ '{:,}'.format(row.revenue) }}</div>
+        </div>
+        {% else %}
+        <div class="py-3 text-sm text-slate-400">No closed deals in this period.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
