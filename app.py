@@ -31,6 +31,13 @@ def current_rep(conn):
     return conn.execute("SELECT * FROM reps WHERE name = ?", (CURRENT_REP_NAME,)).fetchone()
 
 
+@app.context_processor
+def inject_globals():
+    conn = db.get_db()
+    all_accounts = conn.execute("SELECT id, name FROM accounts ORDER BY name").fetchall()
+    return {"all_accounts": all_accounts, "lead_statuses": LEAD_STATUSES, "stages": STAGES}
+
+
 @app.route("/")
 def index():
     return redirect(url_for("dashboard"))
@@ -161,6 +168,23 @@ def convert_lead(lead_id):
     return redirect(url_for("leads"))
 
 
+@app.route("/leads/new", methods=["POST"])
+def new_lead():
+    conn = db.get_db()
+    conn.execute(
+        "INSERT INTO leads (name, company, status, source, value) VALUES (?, ?, ?, ?, ?)",
+        (
+            request.form["name"].strip(),
+            request.form["company"].strip(),
+            request.form.get("status", "New"),
+            request.form.get("source", "Web"),
+            int(request.form.get("value") or 0),
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("leads"))
+
+
 @app.route("/contacts")
 def contacts():
     conn = db.get_db()
@@ -179,6 +203,23 @@ def contacts():
         ).fetchall()
 
     return render_template("contacts.html", rep=rep, contacts=rows, selected=selected, activities=activities)
+
+
+@app.route("/contacts/new", methods=["POST"])
+def new_contact():
+    conn = db.get_db()
+    cur = conn.execute(
+        "INSERT INTO contacts (name, title, account_id, email, phone) VALUES (?, ?, ?, ?, ?)",
+        (
+            request.form["name"].strip(),
+            request.form.get("title", "").strip() or "Contact",
+            request.form["account_id"],
+            request.form.get("email", "").strip(),
+            request.form.get("phone", "").strip(),
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("contacts", id=cur.lastrowid))
 
 
 @app.route("/accounts")
@@ -216,6 +257,23 @@ def accounts():
     )
 
 
+@app.route("/accounts/new", methods=["POST"])
+def new_account():
+    conn = db.get_db()
+    rep = current_rep(conn)
+    cur = conn.execute(
+        "INSERT INTO accounts (name, industry, owner_id, annual_revenue) VALUES (?, ?, ?, ?)",
+        (
+            request.form["name"].strip(),
+            request.form.get("industry", "").strip() or "Unknown",
+            rep["id"],
+            int(request.form.get("annual_revenue") or 0),
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("accounts", id=cur.lastrowid))
+
+
 @app.route("/opportunities")
 def opportunities():
     conn = db.get_db()
@@ -237,6 +295,32 @@ def opportunities():
     return render_template(
         "opportunities.html", rep=rep, columns=columns, stages=STAGES, stage_probability=STAGE_PROBABILITY
     )
+
+
+@app.route("/opportunities/new", methods=["POST"])
+def new_opportunity():
+    conn = db.get_db()
+    rep = current_rep(conn)
+    stage = request.form.get("stage", "Qualify")
+    if stage not in STAGES:
+        stage = "Qualify"
+    close_date = request.form.get("close_date") or (ANCHOR_DATE + timedelta(days=30)).isoformat()
+    closed_at = ANCHOR_DATE.isoformat() if stage == "Closed Won" else None
+    conn.execute(
+        "INSERT INTO opportunities (name, account_id, rep_id, amount, stage, close_date, closed_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            request.form["name"].strip(),
+            request.form["account_id"],
+            rep["id"],
+            int(request.form.get("amount") or 0),
+            stage,
+            close_date,
+            closed_at,
+        ),
+    )
+    conn.commit()
+    return redirect(url_for("opportunities"))
 
 
 @app.route("/opportunities/<int:opp_id>/stage", methods=["POST"])

@@ -61,9 +61,17 @@
                class="w-full rounded-lg bg-slate-100 pl-9 pr-4 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200">
       </div>
       <div class="flex-1"></div>
-      <button class="flex items-center gap-1 rounded-full bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700">
-        <span class="text-base leading-none">+</span> New
-      </button>
+      <div class="relative">
+        <button id="new-menu-btn" class="flex items-center gap-1 rounded-full bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700">
+          <span class="text-base leading-none">+</span> New
+        </button>
+        <div id="new-menu" class="hidden absolute right-0 mt-2 w-44 rounded-lg border border-slate-200 bg-white shadow-lg py-1 z-20">
+          <button data-open-modal="modal-lead" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Lead</button>
+          <button data-open-modal="modal-contact" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Contact</button>
+          <button data-open-modal="modal-account" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Account</button>
+          <button data-open-modal="modal-opportunity" class="new-menu-item block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">New Opportunity</button>
+        </div>
+      </div>
       <button class="text-slate-400 hover:text-slate-600">
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
       </button>
@@ -73,5 +81,100 @@
     </main>
   </div>
 </div>
+
+{% macro field(label) %}
+  <label class="block text-xs font-semibold tracking-wide text-slate-400 mb-1">{{ label }}</label>
+{% endmacro %}
+{% set input_cls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" %}
+
+<div id="modal-overlay" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4">
+
+  <div id="modal-lead" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Lead</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_lead') }}" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Company") }}<input required name="company" class="{{ input_cls }}"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Status") }}
+          <select name="status" class="{{ input_cls }}">
+            {% for s in lead_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>{{ field("Source") }}
+          <select name="source" class="{{ input_cls }}">
+            {% for s in ['Web', 'Referral', 'Trade Show', 'Cold Call', 'Partner'] %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Value ($)") }}<input type="number" name="value" min="0" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Lead</button>
+    </form>
+  </div>
+
+  <div id="modal-contact" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Contact</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_contact') }}" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Title") }}<input name="title" class="{{ input_cls }}"></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Email") }}<input type="email" name="email" class="{{ input_cls }}"></div>
+        <div>{{ field("Phone") }}<input name="phone" class="{{ input_cls }}"></div>
+      </div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Contact</button>
+    </form>
+  </div>
+
+  <div id="modal-account" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Account</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_account') }}" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Industry") }}<input name="industry" class="{{ input_cls }}"></div>
+      <div>{{ field("Annual Revenue ($)") }}<input type="number" name="annual_revenue" min="0" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Account</button>
+    </form>
+  </div>
+
+  <div id="modal-opportunity" class="modal-panel hidden bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">New Opportunity</h2>
+      <button class="modal-close text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+    <form method="post" action="{{ url_for('new_opportunity') }}" class="space-y-3">
+      <div>{{ field("Name") }}<input required name="name" class="{{ input_cls }}"></div>
+      <div>{{ field("Account") }}
+        <select required name="account_id" class="{{ input_cls }}">
+          {% for a in all_accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>{{ field("Amount ($)") }}<input type="number" name="amount" min="0" class="{{ input_cls }}"></div>
+        <div>{{ field("Stage") }}
+          <select name="stage" class="{{ input_cls }}">
+            {% for s in stages %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>{{ field("Close Date") }}<input type="date" name="close_date" class="{{ input_cls }}"></div>
+      <button class="w-full rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-700 mt-2">Create Opportunity</button>
+    </form>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
